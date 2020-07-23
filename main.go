@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 
 	"gopkg.in/yaml.v2"
 )
@@ -51,9 +52,28 @@ func ReadConfiguration() Configuration {
 	return config
 }
 
+func UpdateDomain(config Configuration, domain string) error {
+	baseUrl := "https://admin.gratisdns.com/ddns.php"
+
+	params := url.Values{}
+	params.Add("u", config.Username)
+	params.Add("p", config.Password)
+	params.Add("d", config.DomainAccount)
+	params.Add("h", domain)
+
+	query := params.Encode()
+	requestUrl := fmt.Sprintf("%s?%s", baseUrl, query)
+
+	//   Update DNS - aka fire http request
+	//  https://admin.gratisdns.com/ddns.php?u=johnson&p=password&d=example.com&h=fooo.example.com&i=1.1.1.1
+	return SendRequest(requestUrl)
+}
+
 func main() {
 	// Read and deserialize
 	config := ReadConfiguration()
+
+	extraDomains := os.Args[1:]
 
 	yamlFile, err := ioutil.ReadFile("config.yaml")
 	if err != nil {
@@ -62,21 +82,16 @@ func main() {
 	err = yaml.Unmarshal(yamlFile, &config)
 
 	// TODO: Lookup IP using the myip.opendns.com method
-	baseUrl := "https://admin.gratisdns.com/ddns.php"
 	// For each domain
 	for _, domain := range config.Domains {
-		params := url.Values{}
-		params.Add("u", config.Username)
-		params.Add("p", config.Password)
-		params.Add("d", config.DomainAccount)
-		params.Add("h", domain)
+		err := UpdateDomain(config, domain)
+		if err != nil {
+			log.Fatalf("Failed updating Record for domain: %s", domain)
+		}
+	}
 
-		query := params.Encode()
-		requestUrl := fmt.Sprintf("%s?%s", baseUrl, query)
-
-		//   Update DNS - aka fire http request
-		//  https://admin.gratisdns.com/ddns.php?u=johnson&p=password&d=example.com&h=fooo.example.com&i=1.1.1.1
-		err := SendRequest(requestUrl)
+	for _, domain := range extraDomains {
+		err := UpdateDomain(config, domain)
 		if err != nil {
 			log.Fatalf("Failed updating Record for domain: %s", domain)
 		}
