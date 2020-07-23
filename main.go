@@ -75,12 +75,6 @@ func main() {
 
 	extraDomains := os.Args[1:]
 
-	yamlFile, err := ioutil.ReadFile("config.yaml")
-	if err != nil {
-		log.Fatal("Could not read configuration file")
-	}
-	err = yaml.Unmarshal(yamlFile, &config)
-
 	// TODO: Lookup IP using the myip.opendns.com method
 	// For each domain
 	for _, domain := range config.Domains {
